@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Sintaxe dos scripts
+        run: |
+          python -m py_compile src/uinput_type.py src/expansor.py tools/calibrar.py
+          echo "sintaxe OK"
+      - name: Checagem de shell
+        run: bash -n install.sh && echo "install.sh OK"
+      - name: Conferir que o mapa de teclas carrega e está coerente
+        run: |
+          python - <<'PY'
+          import importlib.util, sys
+          spec = importlib.util.spec_from_file_location("uinput_type", "src/uinput_type.py")
+          m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+          assert ":" in m.SHIFT_EXTRA and m.SHIFT_EXTRA[":"] == 53, "mapa do ':' errado"
+          assert "ç" in m.ACENTOS and m.ACENTOS["ç"][0] == 39, "mapa do 'ç' errado"
+          print("mapa de teclas coerente")
+          PY
