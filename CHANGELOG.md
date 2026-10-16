@@ -4,7 +4,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
 ## [Não publicado]
 
-- Mapear `/` e `?` no layout brasileiro (faltam; `tools/calibrar.py` faz a medição).
+- Mapa de teclas para outros layouts (`tools/calibrar.py` faz a medição em um minuto).
 
 ## [0.1.0] — 2026-10-16
 
@@ -18,7 +18,10 @@ Primeira versão publicada.
 - Configuração por `gatilhos.tsv` (gatilho + substituição), com exemplo neutro.
 - Instalador de usuário e serviço `systemd` (`install.sh`).
 - Ferramenta de calibração de layout (`tools/calibrar.py`).
-- Mapa do teclado brasileiro medido por sonda, incluindo as sequências de tecla morta.
+- Mapa do teclado brasileiro medido por sonda, incluindo as sequências de tecla morta e os
+  símbolos `: " ^ < > / ? \ |`.
+- Todos os códigos de tecla declarados no teclado virtual (`UI_SET_KEYBIT` de 1 a 255):
+  declarar só os que estão no mapa faz o kernel descartar os outros **em silêncio**.
 - Mapa de teclas estrangeiro: ignorar os teclados virtuais de aplicativos de ditado.
 
 ### Corrigido

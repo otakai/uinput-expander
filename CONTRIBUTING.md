@@ -3,7 +3,8 @@
 The most useful contribution right now is **a keymap measurement for your keyboard layout**.
 
 Characters needing `Shift` are layout-specific, and the map in `src/uinput_type.py` was
-measured on a Brazilian (ABNT2) keyboard. The Brazilian `/` and `?` keys are still missing.
+measured on a Brazilian (ABNT2) keyboard — it is complete for that layout, and almost
+certainly wrong for yours.
 
 ## Measuring your layout (about a minute)
 

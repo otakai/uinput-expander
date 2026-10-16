@@ -84,6 +84,10 @@ keyboard**. Measured values, for reference:
 | `"` | Shift + 41 |
 | `^` | Shift + 40 |
 | `<` `>` | Shift + 51 / Shift + 52 |
+| `/` | 89 |
+| `?` | Shift + 89 |
+| `\` | 86 |
+| `|` | Shift + 86 |
 | `ç` | 39 |
 | acute (á é í ó ú) | 26, then the vowel |
 | tilde (ã õ) | 40, then the vowel |
@@ -102,10 +106,16 @@ keyboard — please send measurements as an issue or PR.
 - **11 ms between keystrokes** is what this machine sustains without losses. If you see
   dropped characters, raise it (`pausa=` in `src/expansor.py`).
 
+### And one trap worth knowing if you write this yourself
+
+The virtual keyboard must declare **every** keycode it may ever emit
+(`UI_SET_KEYBIT`). Declaring only the keys already in your map looks fine and fails
+silently: the kernel **discards events for undeclared keycodes**, so the symptom is a
+character that simply never appears — no error, no log line. That is also why probing an
+unknown key with a partially declared device proves nothing.
+
 ## Known limitations
 
-- `/` and `?` are not yet mapped for the Brazilian layout (the keys were not located on the
-  test keyboard). Contributions welcome — `tools/calibrar.py` makes it a 30-second job.
 - Layout-specific `Shift` symbols (see above).
 - The tool ignores virtual keyboards named `Typeless Keyboard Helper` (so dictated text does
   not trigger expansions when a dictation app is installed). Adapt the name filter in
