@@ -53,6 +53,9 @@ K = {
 }
 
 # símbolos que são Shift + tecla de dígito (esses seguem o padrão)
+# apóstrofo: medido na sonda — é a tecla 41 (a 40 é o til, tecla morta)
+K["'"] = 41
+
 SHIFTED = {"!": "1", "@": "2", "#": "3", "$": "4", "%": "5", "&": "7", "*": "8",
            "(": "9", ")": "0", "_": "-", "+": "=", "{": "[", "}": "]", "|": "\\"}
 

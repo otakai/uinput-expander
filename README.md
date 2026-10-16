@@ -84,6 +84,7 @@ keyboard**. Measured values, for reference:
 | `"` | Shift + 41 |
 | `^` | Shift + 40 |
 | `<` `>` | Shift + 51 / Shift + 52 |
+| `'` | 41 |
 | `/` | 89 |
 | `?` | Shift + 89 |
 | `\` | 86 |
