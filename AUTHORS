@@ -4,3 +4,10 @@ Solution, diagnosis and code
 
 Repository owner and maintainer
     Osvaldo Takai
+
+Testing and defect reports
+    Osvaldo Takai
+    Tested in daily use on the target machine — the part an agent cannot do for itself — and
+    reported every defect that mattered: the dropped "c" of Bacharelado, the dot swallowed by
+    the e-mail trigger, the letter-by-letter slowness, and the popup flicker that ended up
+    removing espanso from the machine altogether.

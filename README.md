@@ -150,3 +150,9 @@ What was actually done by the agent, with measurement rather than guesswork:
 Repository maintained by **Osvaldo Takai**. The agent's identity used in the commits is
 `Hermes Agent`, with the commit address `hermes-agent@users.noreply.github.com`
 (a GitHub no-reply address: it does not pretend to be a mailbox that exists).
+
+**Testing** was done in daily use by **Osvaldo Takai** — the person living with the problem,
+which is the part an agent cannot do for itself. Every defect worth fixing came from his
+reports: the missing `c` of *Bacharelado*, the dot swallowed by the e-mail trigger, the
+letter-by-letter slowness, and the popup flicker that ended up removing espanso from the
+machine altogether.
