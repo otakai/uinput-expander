@@ -1,0 +1,14 @@
+[Unit]
+Description=Text expander for GNOME on Wayland (uinput, no clipboard)
+Documentation=https://github.com/SEU_USUARIO/uinput-expander
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/expansor/expansor.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target
