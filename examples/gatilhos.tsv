@@ -1,0 +1,7 @@
+# uinput-expander — gatilhos de exemplo
+# Formato: gatilho<TAB>substituição   (uma linha por gatilho; # é comentário)
+# O gatilho é o que você digita; a substituição é o que entra no lugar.
+saudacao	Olá! Tudo bem?
+assinatura	Nome Sobrenome — empresa@exemplo.com
+bomdia	Bom dia, segue o resumo do dia:
+ok	Sem problemas, pode seguir.
