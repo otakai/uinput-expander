@@ -2,6 +2,18 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.1.4] — 2026-10-17
+
+### Alterado
+
+- **Sem rede de segurança, de propósito.** A revisão periódica de 5 min saiu: se o vigia de eventos
+  parar de avisar, o defeito tem de **aparecer**, não ser mascarado por um relógio. Se o `inotify` não
+  puder ser criado, o expansor agora **falha na hora** (`exit 1`), com uma linha `ERRO` no log, e o
+  systemd marca o serviço como `failed` — visível, em vez de funcionar pela metade.
+- **O log nomeia o que mudou**: `entrou: /dev/input/event17 (teste-nome-final-hermes)` e
+  `saiu: … (nome)`. O nome do que sai vem de um cache, porque quando o nó desaparece o `/sys` já não
+  responde por ele.
+
 ## [0.1.3] — 2026-10-17
 
 ### Alterado

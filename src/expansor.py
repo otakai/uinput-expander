@@ -132,6 +132,21 @@ def criar_vigia_input(caminho="/dev/input"):
         return None
 
 
+nomes_dispositivos = {}
+
+
+def _nome_dispositivo(caminho):
+    """Nome do dispositivo; guarda em cache porque, quando ele sai, o /sys já não responde."""
+    if caminho in nomes_dispositivos:
+        return nomes_dispositivos[caminho]
+    try:
+        nome = open("/sys/class/input/%s/device/name" % os.path.basename(caminho)).read().strip()
+    except Exception:
+        nome = "?"
+    nomes_dispositivos[caminho] = nome
+    return nome
+
+
 def main():
     gatilhos = carregar_gatilhos()
     log("iniciando com %d gatilhos" % len(gatilhos))
@@ -154,12 +169,16 @@ def main():
     shift = False
     log("pronto; teclados: %s" % ", ".join(fds.values()))
     ifd = criar_vigia_input()
-    if ifd is not None:
-        log("vigia de /dev/input ativo (inotify) — reabre na hora em que um dispositivo entra ou sai")
-    else:
-        log("aviso: inotify indisponível; caindo para revisão periódica")
+    if ifd is None:
+        # SEM fallback, de propósito. Uma rede de segurança esconde exatamente o defeito que
+        # interessa: se o vigia de eventos não sobe, o expansor funciona pela metade e o dono só
+        # descobre quando para de expandir, sem nada no log. Falhar aqui, alto e na hora, mantém
+        # o problema evidente — e o systemd marca o serviço como failed, que é visível.
+        log("ERRO: não foi possível criar o vigia de /dev/input por inotify. Sem ele não há como "
+            "reabrir os dispositivos quando mudarem. Falhando de propósito, sem fallback.")
+        return 1
+    log("vigia de /dev/input ativo (inotify) — reabre na hora em que um dispositivo entra ou sai")
     motivo_rescan = 0.0
-    proxima_revisao = time.time() + 300      # só rede de segurança, a cada 5 min
 
     try:
         while True:
@@ -175,17 +194,24 @@ def main():
                 except OSError:
                     pass
                 motivo_rescan = time.time()
-            # Reabre 0,3 s depois do último aviso (o udev cria/renomeia em rajada) e, como rede de
-            # segurança, a cada 5 min caso o kernel não avise.
-            if (motivo_rescan and time.time() - motivo_rescan > 0.3) or time.time() >= proxima_revisao:
+            # Reabre 0,3 s depois do último aviso (o udev cria/renomeia em rajada). Não há
+            # revisão periódica: se o kernel deixar de avisar, o defeito tem de aparecer, não ser
+            # mascarado por um relógio.
+            if motivo_rescan and time.time() - motivo_rescan > 0.3:
                 motivo_rescan = 0.0
-                proxima_revisao = time.time() + 300
                 try:
                     atuais = descobrir_teclados()
                 except Exception:
                     atuais = list(fds.values())
                 if set(atuais) != set(fds.values()):
+                    entraram = sorted(set(atuais) - set(fds.values()))
+                    sairam = sorted(set(fds.values()) - set(atuais))
                     log("dispositivos mudaram; reabrindo (%d -> %d)" % (len(fds), len(atuais)))
+                    for d in entraram:
+                        log("  entrou: %s (%s)" % (d, _nome_dispositivo(d)))
+                    for d in sairam:
+                        # o nó já saiu do /sys, então o nome vem do cache do scan anterior
+                        log("  saiu:   %s (%s)" % (d, nomes_dispositivos.get(d, "?")))
                     for fd in list(fds):
                         try:
                             os.close(fd)
