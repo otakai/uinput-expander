@@ -2,6 +2,16 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.1.3] — 2026-10-17
+
+### Alterado
+
+- **A descoberta de dispositivos deixou de ser por polling.** O `0.1.2` reconferia a cada 10 s; agora
+  um `inotify` em `/dev/input` (via `ctypes`, sem dependências) faz o **kernel avisar** no instante em
+  que um nó entra ou sai, e os handles são reabertos ~0,3 s depois do último aviso. Reação medida:
+  dispositivo criado às 12:31:02.711 → log reagindo às 12:31:03; destruído às 12:31:07.062 → log às
+  12:31:07. A revisão periódica caiu para 5 min e ficou só como rede de segurança.
+
 ## [0.1.2] — 2026-10-17
 
 ### Corrigido

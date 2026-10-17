@@ -106,6 +106,32 @@ def digitar_texto(kb, texto):
     kb.digitar(texto, pausa=0.011, pausa_acento=0.045)
 
 
+# --- vigia de /dev/input por inotify: quem avisa é o kernel, não um relógio ---
+# O polling ("olhar a cada 10 s") é um palpite sobre QUANDO mudou. Aqui o kernel avisa no
+# instante em que um nó entra ou sai de /dev/input, e só então reabrimos. Sem dependências:
+# inotify pela libc com ctypes.
+IN_CREATE, IN_DELETE, IN_MOVED_FROM, IN_MOVED_TO, IN_ATTRIB = 0x100, 0x200, 0x40, 0x80, 0x04
+
+
+def criar_vigia_input(caminho="/dev/input"):
+    """Abre um fd de inotify observando o diretório. Devolve None se não for possível."""
+    try:
+        import ctypes
+        import ctypes.util
+        libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
+        libc.inotify_init1.restype = ctypes.c_int
+        fd = libc.inotify_init1(0x800)          # IN_NONBLOCK
+        if fd < 0:
+            return None
+        mascara = IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO | IN_ATTRIB
+        if libc.inotify_add_watch(fd, caminho.encode(), mascara) < 0:
+            os.close(fd)
+            return None
+        return fd
+    except Exception:
+        return None
+
+
 def main():
     gatilhos = carregar_gatilhos()
     log("iniciando com %d gatilhos" % len(gatilhos))
@@ -127,17 +153,33 @@ def main():
     buf = ""
     shift = False
     log("pronto; teclados: %s" % ", ".join(fds.values()))
-    proxima_revisao = time.time() + 10
+    ifd = criar_vigia_input()
+    if ifd is not None:
+        log("vigia de /dev/input ativo (inotify) — reabre na hora em que um dispositivo entra ou sai")
+    else:
+        log("aviso: inotify indisponível; caindo para revisão periódica")
+    motivo_rescan = 0.0
+    proxima_revisao = time.time() + 300      # só rede de segurança, a cada 5 min
 
     try:
         while True:
-            r, _, _ = select.select(list(fds.keys()), [], [], 1.0)
-            # Redescoberta periódica: os índices /dev/input/event* mudam quando outro app recria
-            # teclados virtuais — o aplicativo de ditado recria os dele quando a sessão reinicia.
-            # Sem isto o expansor segue lendo dispositivos mortos e fica SURDO com o serviço
-            # aparecendo como active e sem uma única linha de erro no log.
-            if time.time() >= proxima_revisao:
-                proxima_revisao = time.time() + 10
+            espera = [ifd] if ifd is not None else []
+            r, _, _ = select.select(list(fds.keys()) + espera, [], [], 1.0)
+            # Quem avisa que um dispositivo entrou ou saiu de /dev/input é o KERNEL (inotify), não
+            # um relógio. O aplicativo de ditado recria os teclados virtuais quando a sessão
+            # reinicia e os índices event* mudam: ler só no start deixa o expansor SURDO, com o
+            # serviço active e sem uma linha de erro.
+            if ifd is not None and ifd in r:
+                try:
+                    os.read(ifd, 4096)              # drena, senão o select fica sempre pronto
+                except OSError:
+                    pass
+                motivo_rescan = time.time()
+            # Reabre 0,3 s depois do último aviso (o udev cria/renomeia em rajada) e, como rede de
+            # segurança, a cada 5 min caso o kernel não avise.
+            if (motivo_rescan and time.time() - motivo_rescan > 0.3) or time.time() >= proxima_revisao:
+                motivo_rescan = 0.0
+                proxima_revisao = time.time() + 300
                 try:
                     atuais = descobrir_teclados()
                 except Exception:
@@ -157,6 +199,8 @@ def main():
                             continue
                     log("pronto; teclados: %s" % ", ".join(sorted(fds.values())))
             for fd in r:
+                if fd == ifd:                       # o fd do inotify não é evento de teclado
+                    continue
                 try:
                     dados = os.read(fd, 24 * 64)
                 except OSError:
