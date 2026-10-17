@@ -127,10 +127,35 @@ def main():
     buf = ""
     shift = False
     log("pronto; teclados: %s" % ", ".join(fds.values()))
+    proxima_revisao = time.time() + 10
 
     try:
         while True:
             r, _, _ = select.select(list(fds.keys()), [], [], 1.0)
+            # Redescoberta periódica: os índices /dev/input/event* mudam quando outro app recria
+            # teclados virtuais — o aplicativo de ditado recria os dele quando a sessão reinicia.
+            # Sem isto o expansor segue lendo dispositivos mortos e fica SURDO com o serviço
+            # aparecendo como active e sem uma única linha de erro no log.
+            if time.time() >= proxima_revisao:
+                proxima_revisao = time.time() + 10
+                try:
+                    atuais = descobrir_teclados()
+                except Exception:
+                    atuais = list(fds.values())
+                if set(atuais) != set(fds.values()):
+                    log("dispositivos mudaram; reabrindo (%d -> %d)" % (len(fds), len(atuais)))
+                    for fd in list(fds):
+                        try:
+                            os.close(fd)
+                        except OSError:
+                            pass
+                    fds.clear()
+                    for dev in atuais:
+                        try:
+                            fds[os.open(dev, os.O_RDONLY | os.O_NONBLOCK)] = dev
+                        except OSError:
+                            continue
+                    log("pronto; teclados: %s" % ", ".join(sorted(fds.values())))
             for fd in r:
                 try:
                     dados = os.read(fd, 24 * 64)

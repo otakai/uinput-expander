@@ -21,7 +21,11 @@ Written because every other option failed on GNOME, each one for a documented re
 
 1. **Detection** — reads every `/dev/input/event*` that `udev` marks as a keyboard
    (needs the `input` group; see Permissions). Keeps a rolling buffer of the last 48
-   characters, interpreted with the keyboard layout (see *Layout* below).
+   characters, interpreted with the keyboard layout (see *Layout* below). The device set is
+   **re-scanned every 10 s** and reopened when it changes: another application recreating its
+   virtual keyboards (dictation apps do this whenever the session restarts) renumbers the
+   `event*` nodes, and a reader holding the old handles goes **silent while the service still
+   reports `active`** — no error, no log line.
 2. **Trigger match** — when the buffer ends with a trigger from the config, it waits for
    the **key release**, then deletes the trigger with backspaces and types the replacement.
    Expanding on key *press* instead races the physical key and makes applications eat a

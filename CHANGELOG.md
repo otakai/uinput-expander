@@ -2,6 +2,16 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [0.1.2] — 2026-10-17
+
+### Corrigido
+
+- **O expansor ficava surdo, em silêncio, quando os dispositivos de teclado mudavam de número.**
+  Aplicativos de ditado recriam os teclados virtuais quando a sessão reinicia, e os índices
+  `/dev/input/event*` mudam. O processo continuava lendo os handles antigos, sem tecla nenhuma,
+  com o serviço `active` e sem uma linha de erro no log. Agora o conjunto de dispositivos é
+  reconferido a cada 10 s e reaberto quando muda (testado criando e destruindo um teclado virtual).
+
 ## [Não publicado]
 
 - Mapa de teclas para outros layouts (`tools/calibrar.py` faz a medição em um minuto).
