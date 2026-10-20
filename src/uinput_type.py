@@ -75,6 +75,8 @@ ACENTOS = {
     "ã": (40, K["a"]), "õ": (40, K["o"]),
     "ç": (39, None),
 }
+# circunflexo = Shift+40 (mesma tecla do til) + vogal
+CIRC = {"â": K["a"], "ê": K["e"], "î": K["i"], "ô": K["o"], "û": K["u"]}
 
 
 class Teclado:
@@ -112,7 +114,11 @@ class Teclado:
     def digitar(self, texto, pausa=0.012, pausa_acento=0.05):
         """Digita o texto. Caracteres fora do mapa são ignorados."""
         for ch in texto:
-            if ch in ACENTOS:
+            if ch in CIRC:
+                self.key(40, shift=True)
+                time.sleep(pausa_acento)
+                self.key(CIRC[ch])
+            elif ch in ACENTOS:
                 base, vogal = ACENTOS[ch]
                 if vogal is None:            # ç: tecla própria
                     self.key(base)
@@ -128,6 +134,11 @@ class Teclado:
                 self.key(K[ch.lower()], shift=True)
             elif ch in K:
                 self.key(K[ch])
+            elif ch == "~":
+                # tecla 40 é morta (ã õ); ~ sozinho = 40 + espaço. Sem isso, ~/foo vira /foo.
+                self.key(40)
+                time.sleep(pausa_acento)
+                self.key(K[" "])
             time.sleep(pausa)
 
     def fechar(self):
