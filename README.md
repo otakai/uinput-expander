@@ -59,11 +59,22 @@ Resource use is trivial: two Python processes, no background CPU when idle.
 ```bash
 git clone https://github.com/<user>/uinput-expander
 cd uinput-expander
-./install.sh              # copies to ~/.local/bin/expansor and enables the user service
+./install.sh              # code in ~/.local/lib/expansor, command in ~/.local/bin/expansor
 ```
 
-Then edit `~/.config/expansor/gatilhos.tsv` (one `trigger<TAB>replacement` per line) and
-restart: `systemctl --user restart expansor.service`.
+Then edit `~/.config/expansor/gatilhos.tsv` (one `trigger<TAB>replacement` per line):
+
+```bash
+expansor edit      # opens the file in a GUI editor, validates it, restarts the service
+expansor status    # service state, trigger count, keyboards being read
+expansor restart
+expansor log
+expansor teste "ção à tarde ATENÇÃO ~/x"   # types into the focused field (3 s countdown)
+```
+
+`expansor edit` **validates before restarting**: a line without the TAB between trigger and
+replacement is reported and the service is left untouched, so a typo never takes the expander
+down silently.
 
 ## Configuration
 

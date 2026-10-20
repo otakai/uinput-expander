@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# expansor — comandos do dia a dia do expansor de texto.
+#
+# Uso: expansor <comando> [argumento]
+#   edit      abre os gatilhos no editor, valida ao salvar e reinicia o serviço
+#   restart   reinicia o serviço
+#   status    estado do serviço, quantidade de gatilhos e teclados lidos
+#   log       últimas linhas do registro
+#   teste     digita um texto no campo em foco (para conferir acentos)
+#   ajuda     esta mensagem
+set -uo pipefail
+
+CONF="${XDG_CONFIG_HOME:-$HOME/.config}/expansor/gatilhos.tsv"
+SERVICO="expansor.service"
+EDITOR_GRAFICO="${EXPANSOR_EDITOR:-gnome-text-editor}"
+
+avisar() {   # avisar <título> <texto>
+  notify-send --app-name=Expansor --transient -t 4000 "$1" "${2:-}" 2>/dev/null || true
+}
+
+contar_gatilhos() {
+  [ -f "$CONF" ] || { echo 0; return; }
+  awk -F'\t' 'NF>=2 && $1 !~ /^[[:space:]]*#/ && length($1)>0 {n++} END{print n+0}' "$CONF"
+}
+
+validar() {   # devolve 0 se o arquivo estiver utilizável; imprime o problema
+  [ -f "$CONF" ] || { echo "arquivo não existe: $CONF"; return 1; }
+  local linha=0 ruins=0
+  while IFS= read -r l || [ -n "$l" ]; do
+    linha=$((linha+1))
+    case "$l" in ''|'#'*) continue ;; esac
+    if [ "$(printf '%s' "$l" | tr -cd '\t' | wc -c)" -lt 1 ]; then
+      echo "linha $linha sem TAB entre gatilho e substituição: ${l:0:60}"
+      ruins=$((ruins+1))
+    fi
+  done < "$CONF"
+  [ "$ruins" -eq 0 ] || { echo "$ruins linha(s) inválida(s)"; return 1; }
+  return 0
+}
+
+cmd_edit() {
+  [ -f "$CONF" ] || { echo "não existe $CONF"; return 1; }
+  local antes; antes=$(contar_gatilhos)
+  echo "abrindo $CONF no editor..."
+  "$EDITOR_GRAFICO" "$CONF" >/dev/null 2>&1 &
+  local pid=$!
+  wait "$pid" 2>/dev/null
+
+  local problema
+  if ! problema=$(validar); then
+    avisar "Gatilhos com problema" "$problema — o expansor NÃO foi reiniciado"
+    echo "PROBLEMA: $problema"
+    echo "o serviço continua com a configuração anterior; corrija e rode 'expansor edit' de novo"
+    return 1
+  fi
+  local depois; depois=$(contar_gatilhos)
+  systemctl --user restart "$SERVICO"
+  sleep 2
+  if systemctl --user is-active --quiet "$SERVICO"; then
+    avisar "Expansor reiniciado" "$depois gatilhos (antes: $antes)"
+    echo "ok: $depois gatilhos (antes: $antes); serviço ativo"
+  else
+    avisar "Falha ao reiniciar" "veja: expansor log"
+    echo "ERRO: o serviço não subiu. Rode: expansor log"
+    return 1
+  fi
+}
+
+cmd_restart() {
+  systemctl --user restart "$SERVICO"
+  sleep 2
+  systemctl --user is-active --quiet "$SERVICO" \
+    && { echo "reiniciado: $(contar_gatilhos) gatilhos"; avisar "Expansor reiniciado" "$(contar_gatilhos) gatilhos"; } \
+    || { echo "ERRO: não subiu. Rode: expansor log"; return 1; }
+}
+
+cmd_status() {
+  echo "serviço:   $(systemctl --user is-active "$SERVICO") (reinícios: $(systemctl --user show "$SERVICO" -p NRestarts --value 2>/dev/null))"
+  echo "gatilhos:  $(contar_gatilhos) em $CONF"
+  echo "programa:  $(systemctl --user show "$SERVICO" -p ExecStart --value 2>/dev/null | sed 's/.*path=//; s/ ;.*//')"
+  # o expansor escreve o próprio log em ~/.cache/expansor/expansor.log (não no journal)
+  echo "teclados:  $(grep -o 'pronto; teclados:.*' "${XDG_CACHE_HOME:-$HOME/.cache}/expansor/expansor.log" 2>/dev/null | tail -1 | cut -c1-140)"
+}
+
+cmd_log() {
+  echo "--- journal do serviço:"
+  journalctl --user -u "$SERVICO" -n 8 --no-pager
+  echo
+  echo "--- log do programa ($(echo "${XDG_CACHE_HOME:-$HOME/.cache}")/expansor/expansor.log):"
+  tail -n "${1:-25}" "${XDG_CACHE_HOME:-$HOME/.cache}/expansor/expansor.log" 2>/dev/null || echo "(sem log)"
+}
+
+cmd_teste() {
+  local texto="${1:-}"
+  [ -n "$texto" ] || { echo 'uso: expansor teste "texto com acentos"'; return 1; }
+  echo "digitando em 3 s no campo em foco — clique onde quer o texto"
+  sleep 3
+  python3 - "$texto" <<'PY'
+import sys, os, importlib.util, glob
+cand = [os.path.expanduser("~/.local/lib/expansor/uinput_type.py"),
+        os.path.expanduser("~/.local/bin/expansor/uinput_type.py")]
+caminho = next((c for c in cand if os.path.exists(c)), None)
+if not caminho:
+    sys.exit("não achei uinput_type.py")
+spec = importlib.util.spec_from_file_location("uit", caminho)
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+kb = m.Teclado("expansor-teste")
+try:
+    kb.digitar(sys.argv[1])
+finally:
+    kb.fechar()
+PY
+}
+
+case "${1:-ajuda}" in
+  edit)    cmd_edit ;;
+  restart) cmd_restart ;;
+  status)  cmd_status ;;
+  log)     shift; cmd_log "${1:-25}" ;;
+  teste)   shift; cmd_teste "${1:-}" ;;
+  ajuda|-h|--help|"") sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) echo "comando desconhecido: $1"; echo "use: expansor ajuda"; exit 2 ;;
+esac
